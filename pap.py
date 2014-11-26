@@ -16,7 +16,6 @@ def connect_db():
 	conn = psycopg2.connect(database='sdas', user=None, password=None, host=None, port=None)
 	return conn
 
-
 @app.errorhandler(400)
 def not_found(error):
     return make_response(jsonify( { 'error': 'Bad request' } ), 400)
@@ -80,6 +79,25 @@ def get_locations():
 	return locations	
 	#return jsonify({'locations': locations})
 
+locations = get_locations()
+
+def get_groups():
+	conn = connect_db()
+	cur = conn.cursor()
+	sql = "SELECT * FROM groups;"
+	cur.execute(sql)
+	result = cur.fetchall()
+	groups = []
+	for g in result:
+		fields = {}
+		fields['ID'] = g[0]
+		fields['NAME'] = g[1]
+		fields['final_dest_id'] = g[2]
+		groups.append(fields)
+	return groups
+
+groups = get_groups()
+
 #@app.route('/mas/api/v1.0/tasks/getwalkers', methods=['GET'])
 def get_walkers():
 	conn = connect_db()
@@ -108,6 +126,32 @@ def get_walkers():
 		
 	return walkers
 	#return jsonify({'walkers': walkers})
+walkers = get_walkers()
+
+def get_users():
+	conn = connect_db()
+	cur = conn.cursor()
+	sql = "SELECT * from users;"
+	cur.execute(sql)
+	result = cur.fetchall()
+	print result
+	
+	users = []
+	for r in result:
+		fields = {}
+		fields['gt_id'] = r[0]
+		fields['first_name'] = r[1]
+		fields['last_name'] = r[2]
+		fields['def_dest_id'] = r[3]
+		fields['email'] = r[4]
+		users.append(fields)
+
+	if conn:
+		conn.close()
+		
+	return users
+
+users = get_users()
 
 
 @app.route('/mas/api/v1.0/tasks/getuser', methods=['GET'])
@@ -354,59 +398,71 @@ def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
 
 
-@app.route('/login')
+@app.route('/login',methods=["GET", "POST"])
 def login():
-	 users = get_walkers()
-    	 return render_template('login.html', users=users)
+    	 return render_template('login.html')
     	
 
     	
 @app.route("/profile", methods=["GET", "POST"])
 def welcome():
-	 users = get_walkers()
-	 userName = request.form['username']
+	 userID = request.form['username']
 	 passWord= request.form['password']
-	 current = userName+passWord
+	 current = userID+passWord
 	 combos = []
 	 for user in users:
-	 	combo = user['first_name']+user['gt_id']	
+	 	combo = user['gt_id']+user['gt_id']	
 		combos.append(combo)
+
 	 if current in combos:
-   	 	return render_template("welcome.html",users=users)
+		for u in users:
+			if u['gt_id'] == userID:
+				currentUser = u['first_name']
+		return render_template("welcome.html",users=users,currentUser=currentUser,walkers=walkers,groups=groups)
 	 else:
 		return render_template("loginFail.html")
 
 @app.route("/submit", methods=["GET", "POST"])
 def sub():
-	users = get_walkers()
-	group = int(request.args['grp_id'])
+	group = request.args['grp_name']
 	groupusers =[]
-	for user in users:
-		if user['grp_id'] == group:
-			groupusers.append(user)
-	print groupusers
-	return render_template("submit.html",groupusers=groupusers,group=group)
+	for walker in walkers:
+		if walker['grp_name'] == group:
+			groupusers.append(walker)
+	return render_template("submit.html",groupusers=groupusers,group=group, groups= groups)
 
-@app.route("/about")
+@app.route("/about",methods=["GET", "POST"])
 def about():
 	return render_template("about.html")
 
+
+
+@app.route("/pick", methods=["GET","POST"])
+def pick():
+	
+	destination = request.form['destination']
+	time = int(request.form['time'])
+	groupusers = []
+	for walker in walkers:
+		if walker['dest_name'] == destination:
+			groupusers.append(walker)
+	return render_template("pick.html",groupusers=groupusers,groups= groups)
+
 @app.route("/aboutGroup", methods=["GET", "POST"])
 def group():
-	users = get_walkers()
-	group = int(request.args['grp_id'])
+	group = request.args['grp_name']
 	groupusers = []
-	for user in users:
-		if user['grp_id'] == group:
-			groupusers.append(user)	
-	return render_template("group.html",groupusers=groupusers,users=users,group=group)
+	for walker in walkers:
+		if walker['grp_name'] == group:
+			groupusers.append(walker)	
+
+	return render_template("group.html",groupusers=groupusers,group=group,groups= groups)
 
 
 
-@app.route("/home")
+@app.route("/home",methods=["GET","POST"])
 def home():
-	users = get_walkers()
-	return render_template("welcome.html",users=users)
+	return render_template("welcome.html",walkers=walkers,groups= groups)
 
 
 
