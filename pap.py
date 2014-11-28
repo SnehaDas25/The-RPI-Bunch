@@ -63,8 +63,6 @@ def get_locations():
 	sql = "SELECT * FROM locations;"
 	cur.execute(sql)
 	result = cur.fetchall()
-	print result
-	
 	locations = []
 	for r in result:
 		fields = {}
@@ -178,29 +176,7 @@ def get_user():
 	#return jsonify({'user': user})
 
 
-@app.route('/mas/api/v1.0/tasks/addgroup', methods=['POST'])
-def add_group():
-	if not request.form or not 'grp_id' in request.form:
-		abort(400)
 
-	grp_id = request.form['grp_id']
-	name = request.form['name']
-	dest_id = request.form['dest_id']
-
-	if name=="":
-		name += "Group" + str(random.randint(100,999)) + str(grp_id)
-
-	conn = connect_db()
-	cur = conn.cursor()
-
-	sql = "INSERT INTO groups VALUES (" + grp_id + ", '" + name + "', " + dest_id + ");" 
-	cur.execute(sql)
-	conn.commit()
-	
-	if conn:
-		conn.close()
-		
-	return jsonify({'success': 'true'}), 201
 
 @app.route('/mas/api/v1.0/tasks/removegroup', methods=['POST'])
 def remove_group():
@@ -310,10 +286,10 @@ def add_location():
 	if not request.form or not 'loc_id' in request.form:
 		abort(400)
 
-	loc_id = request.form['loc_id']
+	loc_id = str(random.randint(100,999))
 	name = request.form['name']
-	lat= request.form['lat']
-	longi = request.form['long']
+	lat= str(random.randint(100,999))
+	longi = str(random.randint(100,999))
 #
 	conn = connect_db()
 	cur = conn.cursor()
@@ -418,53 +394,102 @@ def welcome():
 		for u in users:
 			if u['gt_id'] == userID:
 				currentUser = u['first_name']
-		return render_template("welcome.html",users=users,currentUser=currentUser,walkers=walkers,groups=groups)
+		return render_template("welcome.html",users=users  ,walkers=walkers,groups=groups,currentUser=currentUser)
 	 else:
 		return render_template("loginFail.html")
 
 @app.route("/submit", methods=["GET", "POST"])
 def sub():
+ 
 	group = request.args['grp_name']
 	groupusers =[]
 	for walker in walkers:
 		if walker['grp_name'] == group:
 			groupusers.append(walker)
-	return render_template("submit.html",groupusers=groupusers,group=group, groups= groups)
+	return render_template("submit.html",groupusers=groupusers,group=group, groups= groups  )
 
 @app.route("/about",methods=["GET", "POST"])
 def about():
+ 
 	return render_template("about.html")
 
 
 
 @app.route("/pick", methods=["GET","POST"])
 def pick():
-	
+ 
 	destination = request.form['destination']
 	time = int(request.form['time'])
 	groupusers = []
 	for walker in walkers:
 		if walker['dest_name'] == destination:
 			groupusers.append(walker)
-	return render_template("pick.html",groupusers=groupusers,groups= groups)
+	return render_template("pick.html",groupusers=groupusers,groups= groups  )
 
 @app.route("/aboutGroup", methods=["GET", "POST"])
 def group():
+ 
 	group = request.args['grp_name']
 	groupusers = []
 	for walker in walkers:
 		if walker['grp_name'] == group:
 			groupusers.append(walker)	
 
-	return render_template("group.html",groupusers=groupusers,group=group,groups= groups)
+	return render_template("group.html",groupusers=groupusers,group=group,groups= groups  )
 
 
 
 @app.route("/home",methods=["GET","POST"])
 def home():
+ 
 	return render_template("welcome.html",walkers=walkers,groups= groups)
 
+@app.route("/help",methods=["GET","POST"])
+def help():
+ 
+	return render_template("help.html",walkers=walkers,groups= groups)
 
+@app.route("/register",methods=["GET","POST"])
+def register():
+	return render_template("register.html",walkers=walkers,groups= groups)
+
+@app.route("/addUser",methods=["GET","POST"])
+def addUser():
+        emailID =  request.args['emailID']
+	first =  request.args['first']
+	last =  request.args['last']
+	print first
+	print last
+	print emailID
+	conn = connect_db()
+	cur = conn.cursor()
+	sql = "INSERT INTO users VALUES ('"+emailID+"','"+first+"','"+last+"',"+str(1)+",'"+emailID+"@rpi.edu');" 
+	cur.execute(sql)
+	conn.commit()
+	if conn:
+		conn.close()
+	return render_template("login.html",walkers=walkers,groups= groups,emailID=emailID,first=first,last=last)
+
+@app.route('/newGroup', methods=["GET","POST"])
+def add_group():
+ 	gt_id = request.args['current']
+	grp_id = int(random.randint(100,999))	
+	groupName = request.args['groupName']
+	locationName = request.args['locationName']
+	conn = connect_db()
+	cur = conn.cursor()
+	sql = "SELECT id FROM locations WHERE name ='" + locationName + "';"
+	cur.execute(sql)
+	result = cur.fetchone()
+	dest_id =  int(result[0])
+	sql = "INSERT INTO groups VALUES ("+str(grp_id)+",'"+ groupName+"',"+str(dest_id)+");" 
+	cur.execute(sql)
+	sql = "INSERT INTO walkers VALUES ('"+gt_id+"',7,"+str(dest_id)+",'2014-10-26 23:00:00 EDT',"+str(grp_id)+");" 
+	cur.execute(sql)
+	conn.commit()
+	if conn:
+		conn.close()
+	return render_template("about.html",walkers=walkers,groups= groups)
 
 @app.route('/logout')
 def logout():
